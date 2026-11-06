@@ -1,0 +1,11 @@
+{
+  "name": "atoai-local",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.8.1",
+  "scripts": {
+    "dev": "pnpm run dev:server & pnpm run dev:admin & wait",
+    "dev:server": "pnpm --dir server dev",
+    "dev:admin": "pnpm --dir admin.atoai dev"
+  }
+}

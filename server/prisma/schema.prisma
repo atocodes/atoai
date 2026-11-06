@@ -1,0 +1,208 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/prisma/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MediaType {
+  photo
+  video
+  file
+  audio
+}
+
+model KnowledgeDocument {
+  id          String    @id @default(uuid())
+  source      String    @default("telegram")
+  sourceId    String    @unique @map("source_id")
+  author      String
+  content     String    @db.Text
+  publishedAt DateTime  @map("published_at")
+  editedAt    DateTime? @map("edited_at")
+  contentType String    @map("content_type")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  metadata KnowledgeMetadata?
+  chunks   KnowledgeChunk[]
+
+  @@unique([source, sourceId])
+  @@map("knowledge_documents")
+}
+
+model KnowledgeMetadata {
+  id         String            @id @default(uuid())
+  documentId String            @unique @map("document_id")
+  document   KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  hashtags  String[] @default([])
+  mentions  String[] @default([])
+  reactions Json     @default("[]") // Stores TelegramReaction[] objects
+
+  hasMedia  Boolean    @default(false) @map("has_media")
+  mediaType MediaType? @map("media_type")
+
+  forwarded      Boolean @default(false)
+  replied        Boolean @default(false)
+  originalAuthor String? @map("original_author")
+
+  links DocumentLink[]
+
+  @@map("knowledge_metadata")
+}
+
+model DocumentLink {
+  id         String            @id @default(uuid())
+  metadataId String            @map("metadata_id")
+  metadata   KnowledgeMetadata @relation(fields: [metadataId], references: [id], onDelete: Cascade)
+
+  label String
+  url   String @db.Text
+
+  @@map("document_links")
+}
+
+model KnowledgeChunk {
+  id         String @id @default(uuid())
+  documentId String @map("document_id")
+
+  content    String @db.Text
+  chunkIndex Int    @map("chunk_index")
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  embedding Unsupported("vector(768)")?
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
+  @@map("knowledge_chunks")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  role          String?   @default("user")
+  banned        Boolean?  @default(false)
+  banReason     String?   @map("ban_reason")
+  banExpires    DateTime? @map("ban_expires")
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime @map("expires_at")
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("verification")
+}
+
+model TelegramIngestionLog {
+  id          String   @id @default(uuid())
+  messageId   String   @map("message_id")
+  chatId      String?  @map("chat_id")
+  chatTitle   String?  @map("chat_title")
+  author      String?
+  contentType String?  @map("content_type")
+  status      String   @default("success") // "success" | "skipped" | "failed"
+  rawSnippet  String?  @map("raw_snippet") @db.Text
+  documentId  String?  @map("document_id")
+  chunksCount Int      @default(0) @map("chunks_count")
+  reason      String?  @db.Text
+  source      String   @default("telegram_channel_post")
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([messageId])
+  @@map("telegram_ingestion_logs")
+}
+
+enum SourceType {
+  TELEGRAM
+  BLOG
+  WEBSITE
+  OTHER
+}
+
+enum SourceStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  DELETED
+}
+
+model Source {
+  id          String       @id @default(uuid())
+  name        String?
+  type        SourceType   @default(TELEGRAM)
+  status      SourceStatus @default(ACTIVE)
+  channelId   String?      @unique @map("channel_id")
+  username    String?
+  url         String?
+  description String?      @db.Text
+  metadata    Json?        @default("{}")
+
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([status])
+  @@index([username])
+  @@map("sources")
+}

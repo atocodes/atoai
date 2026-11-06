@@ -1,0 +1,48 @@
+{
+  "name": "atoai",
+  "version": "0.2.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "pnpm prisma generate && pnpm prisma db push && next build",
+    "start": "next start",
+    "lint": "eslint",
+    "seed": "tsx prisma/seed.ts",
+    "set-admin": "tsx scripts/set-admin.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.19.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@prisma/orm-postgres": "8.0.0-rc.7",
+    "@types/express": "^5.0.6",
+    "@vercel/analytics": "^2.0.1",
+    "better-auth": "^1.7.10",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "jinaai": "^0.2.20",
+    "nanoid": "^6.0.2",
+    "next": "16.4.2",
+    "ollama": "^0.6.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "telegraf": "^4.16.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.2",
+    "prisma": "^7.8.0",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@12.8.1"
+}
